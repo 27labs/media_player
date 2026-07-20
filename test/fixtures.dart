@@ -1,0 +1,81 @@
+import 'package:media_player/media/media_session_snapshot.dart';
+
+Map<Object?, Object?> platformSnapshotMap() => {
+  'type': 'snapshot',
+  'revision': 7,
+  'session': {
+    'sourceAppId': 'SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify',
+    'title': 'Night Drive',
+    'artist': 'Example Artist',
+    'albumTitle': 'Neon Roads',
+  },
+  'playback': {
+    'status': 'playing',
+    'canPlay': true,
+    'canPause': true,
+    'canToggle': true,
+    'canPrevious': false,
+    'canNext': true,
+    'canSeek': true,
+    'rate': 1.0,
+  },
+  'timeline': {
+    'positionMs': 30000,
+    'startMs': 0,
+    'endMs': 180000,
+    'minSeekMs': 0,
+    'maxSeekMs': 180000,
+    'updatedAtEpochMs': 1000000,
+  },
+  'artwork': {'available': true, 'pending': false, 'revision': 3},
+};
+
+MediaSessionSnapshot mediaSnapshot({
+  int revision = 1,
+  String title = 'Night Drive',
+  String artist = 'Example Artist',
+  String albumTitle = 'Neon Roads',
+  MediaPlaybackStatus status = MediaPlaybackStatus.playing,
+  bool canPlay = true,
+  bool canPause = true,
+  bool canToggle = true,
+  bool canPrevious = true,
+  bool canNext = true,
+  bool canSeek = true,
+  Duration position = const Duration(seconds: 30),
+  Duration end = const Duration(minutes: 3),
+  Duration minimumSeek = Duration.zero,
+  Duration maximumSeek = const Duration(minutes: 3),
+  bool artworkAvailable = false,
+  bool artworkPending = false,
+  int? artworkRevision,
+}) {
+  return MediaSessionSnapshot(
+    revision: revision,
+    sourceAppId: 'Example.Player_123!App',
+    title: title,
+    artist: artist,
+    albumTitle: albumTitle,
+    playbackStatus: status,
+    capabilities: MediaPlaybackCapabilities(
+      canPlay: canPlay,
+      canPause: canPause,
+      canToggle: canToggle,
+      canPrevious: canPrevious,
+      canNext: canNext,
+      canSeek: canSeek,
+    ),
+    timeline: MediaTimeline(
+      position: position,
+      start: Duration.zero,
+      end: end,
+      minimumSeek: minimumSeek,
+      maximumSeek: maximumSeek,
+      updatedAt: Duration.zero,
+      playbackRate: 1,
+    ),
+    artworkAvailable: artworkAvailable,
+    artworkPending: artworkPending,
+    artworkRevision: artworkRevision,
+  );
+}
