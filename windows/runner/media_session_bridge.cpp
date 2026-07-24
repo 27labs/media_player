@@ -269,23 +269,33 @@ class MediaSessionBridge::Impl
           if (!stopped_ && refresh_revision == session_revision_ &&
               SameSession(refresh_session, session_) &&
               SameSession(manager_.GetCurrentSession(), refresh_session)) {
+            const auto playback = refresh_session.GetPlaybackInfo();
+            const auto timeline = refresh_session.GetTimelineProperties();
             cached_media_ = media;
-            const std::string signature =
-                winrt::to_string(media.Title()) + "\x1f" +
-                winrt::to_string(media.Artist()) + "\x1f" +
-                winrt::to_string(media.AlbumTitle());
-            if (refresh_media || signature != media_signature_) {
-              media_signature_ = signature;
-              ++artwork_revision_;
-              artwork_loading_ = true;
-              artwork_bytes_.clear();
-              RefreshArtworkAsync(media.Thumbnail(), refresh_revision,
-                                  artwork_revision_);
-            }
+            if (!media || !playback || !timeline) {
+              if (!media) {
+                media_dirty_.store(true);
+              }
+              Log("snapshot unavailable revision=" +
+                  std::to_string(refresh_revision));
+              EmitUnavailable("session_unavailable");
+            } else {
+              const std::string signature =
+                  winrt::to_string(media.Title()) + "\x1f" +
+                  winrt::to_string(media.Artist()) + "\x1f" +
+                  winrt::to_string(media.AlbumTitle());
+              if (refresh_media || signature != media_signature_) {
+                media_signature_ = signature;
+                ++artwork_revision_;
+                artwork_loading_ = true;
+                artwork_bytes_.clear();
+                RefreshArtworkAsync(media.Thumbnail(), refresh_revision,
+                                    artwork_revision_);
+              }
 
-            if (!stopped_ && refresh_revision == session_revision_) {
-              EmitSnapshot(media, refresh_session.GetPlaybackInfo(),
-                           refresh_session.GetTimelineProperties());
+              if (!stopped_ && refresh_revision == session_revision_) {
+                EmitSnapshot(media, playback, timeline);
+              }
             }
           }
         }
@@ -449,6 +459,10 @@ class MediaSessionBridge::Impl
       return;
     }
     const auto controls = playback.Controls();
+    if (!controls) {
+      EmitUnavailable("session_unavailable");
+      return;
+    }
     double playback_rate = 1.0;
     if (const auto rate = playback.PlaybackRate()) {
       playback_rate = rate.Value();
@@ -594,7 +608,18 @@ class MediaSessionBridge::Impl
     }
 
     try {
-      const auto controls = command_session.GetPlaybackInfo().Controls();
+      const auto playback = command_session.GetPlaybackInfo();
+      if (!playback) {
+        result->Success(CommandResult(false, command_revision));
+        RequestRefresh();
+        co_return;
+      }
+      const auto controls = playback.Controls();
+      if (!controls) {
+        result->Success(CommandResult(false, command_revision));
+        RequestRefresh();
+        co_return;
+      }
       bool accepted = false;
       if (method == "playPause" && controls.IsPlayPauseToggleEnabled()) {
         accepted = co_await command_session.TryTogglePlayPauseAsync();
@@ -615,6 +640,11 @@ class MediaSessionBridge::Impl
           co_return;
         }
         const auto timeline = command_session.GetTimelineProperties();
+        if (!timeline) {
+          result->Success(CommandResult(false, command_revision));
+          RequestRefresh();
+          co_return;
+        }
         const int64_t minimum = ToMilliseconds(timeline.MinSeekTime());
         const int64_t reported_maximum =
             ToMilliseconds(timeline.MaxSeekTime());
